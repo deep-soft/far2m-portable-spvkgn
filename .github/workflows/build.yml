@@ -1,0 +1,191 @@
+name: build
+run-name: 🌙 Nightly build 🚀 ${{ github.event.client_payload.tag }}-${{ github.event.client_payload.date }}-${{ github.event.client_payload.sha }}
+
+on:
+  repository_dispatch:
+    types: [build-nightly]
+
+jobs:
+  build-portable:
+    name: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - distro: ubuntu
+            version: '18.04'
+    container: ${{ matrix.distro }}:${{ matrix.version }}
+    steps:
+      - name: Add build dependencies
+        env:
+          PACKAGES: >
+            ca-certificates ccache cmake file g++-8 gawk git libarchive-dev libluajit-5.1-dev libneon27-dev libnfs-dev libpcre3-dev
+            libsmbclient-dev libssh-dev libuchardet-dev libxerces-c-dev libxi-dev libtree m4 makeself ninja-build patch patchelf
+            quilt uuid-dev wget
+        run: |
+          if [ "${{ matrix.distro }}" = "ubuntu" ]; then
+            echo "deb [trusted=yes] http://ppa.launchpad.net/far2l-team/tools/ubuntu xenial main" | tee /etc/apt/sources.list.d/far2l-team.list
+            echo "deb [trusted=yes] http://ppa.launchpad.net/git-core/ppa/ubuntu bionic main" | tee /etc/apt/sources.list.d/git-core.list
+            apt update -qq && apt install -y --no-install-recommends ${{ env.PACKAGES }}
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Checkout far2m
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.client_payload.repo }}
+          path: far2m
+
+      - name: Setup ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ccache-${{ matrix.distro }}-${{ matrix.version }}-${{ github.event.client_payload.sha }}
+          restore-keys: |
+            ccache-${{ matrix.distro }}-${{ matrix.version }}-
+
+      - name: Build far2m
+        working-directory: far2m
+        env:
+          DATE: ${{ github.event.client_payload.date }}
+          SHA: ${{ github.event.client_payload.sha }}
+          TAG: ${{ github.event.client_payload.tag }}
+          STANDALONE: true
+        run: |
+          export CC=gcc-8
+          export CXX=g++-8
+          export VERSION=${TAG}.git$(date -d $DATE +%Y%m%d)
+          export PKG_NAME=far2m_${VERSION}-$(uname -m)-glibc
+          bash -x ../build_far2m.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: far2m-${{ matrix.distro }}-${{ matrix.version }}
+          path: |
+            ./**/far2m*.tar*
+          if-no-files-found: error
+
+  build-AppImage:
+    if: false
+    name: build AppImage
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+    steps:
+      - name: Add build dependencies
+        env:
+          PACKAGES: >
+            ccache cmake desktop-file-utils file g++ gawk libarchive-dev libluajit-5.1-dev libfuse2 libneon27-dev libnfs-dev
+            libpcre3-dev libsmbclient-dev libssh-dev libuchardet-dev libwxgtk3.0-gtk3-dev libxerces-c-dev libxi-dev m4
+            ninja-build patch patchelf python3-minimal python3-wheel quilt squashfs-tools uuid-dev wget
+        run: |
+          sudo apt update -qq && sudo apt install -y --no-install-recommends ${{ env.PACKAGES }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout far2m
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.client_payload.repo }}
+          path: far2m
+
+      - name: Setup ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ccache-${{ matrix.os }}-${{ github.event.client_payload.sha }}
+          restore-keys: |
+            ccache-${{ matrix.os }}-
+
+      - name: Build far2m
+        working-directory: far2m
+        env:
+          DATE: ${{ github.event.client_payload.date }}
+          SHA: ${{ github.event.client_payload.sha }}
+          TAG: ${{ github.event.client_payload.tag }}
+          PLUGINS_EXTRA: true
+        run: |
+          bash -x ../build_far2m.sh
+
+      - name: Build AppImage
+        env:
+          DATE: ${{ github.event.client_payload.date }}
+          TAG: ${{ github.event.client_payload.tag }}
+        run: |
+          export ARCH=$(uname -m)
+          export APPIMAGE_VERSION=$TAG
+          export APPIMAGE_APT_ARCH=$(dpkg-architecture -qDEB_HOST_ARCH)
+          export APPIMAGE_APT_DISTRO=$(awk -F= '/^VERSION_CODENAME=/ {print $2}' /etc/os-release)
+          export APPIMAGE_ARCH=$ARCH
+          export PYTHON3_VERSION=$(py3versions -vd)
+
+          # appimagetool with Squashfs zstd compression support
+          wget --no-check-certificate -O appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage
+          chmod +x appimagetool
+          # static runtime
+          wget --no-check-certificate -O runtime https://github.com/probonopd/static-tools/releases/download/2023/runtime-fuse2-$ARCH
+
+          python -m venv _venv && source _venv/bin/activate
+          pip install git+https://github.com/AppImageCrafters/appimage-builder.git
+          appimage-builder --skip-appimage --recipe AppImageBuilder.yml
+          APPIMAGE_EXTRACT_AND_RUN=1 VERSION=$TAG ./appimagetool -v --runtime-file runtime AppDir
+
+          # Put AppImage into .tar
+          VERSION=${TAG}.git$(date -d $DATE +%Y%m%d)
+          PKG_NAME=far2m_${VERSION}-${ARCH}
+          mv far2m*.AppImage $PKG_NAME.AppImage
+          tar cvf ${PKG_NAME/_${VERSION}}.AppImage.tar far2m*.AppImage
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: far2m-AppImage-${{ matrix.os }}
+          path: |
+            ./**/far2m*.tar*
+          if-no-files-found: error
+
+  release:
+    name: Update Nightly release
+    # needs: [build-portable, build-AppImage]
+    needs: [build-portable]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Upload release assets
+        id: assets
+        uses: andelf/nightly-release@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          prerelease: false
+          tag_name: latest
+          name: ${{ github.event.client_payload.date }}
+          body: |
+            ${{ github.event.client_payload.url }}: ${{ github.event.client_payload.message }}
+          files: |
+            ./**/far2m*.run.tar
+            # ./**/far2m*.AppImage.tar
+
+      - name: Update version for badge
+        if: steps.assets.outcome == 'success'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: f53cb6c1d56b0eaf40c88d607fc5fef1
+          filename: far2m-portable.json
+          label: version
+          message: ${{ github.event.client_payload.tag }}-${{ github.event.client_payload.date }}-${{ github.event.client_payload.sha }}
+          color: blue
+
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        continue-on-error: true
