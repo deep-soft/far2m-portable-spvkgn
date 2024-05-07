@@ -20,8 +20,8 @@ jobs:
         env:
           PACKAGES: >
             ca-certificates ccache cmake file g++-8 gawk git libarchive-dev libluajit-5.1-dev libneon27-dev libnfs-dev libpcre3-dev
-            libsmbclient-dev libssh-dev libuchardet-dev libxerces-c-dev libxi-dev libtree m4 makeself ninja-build patch patchelf
-            quilt uuid-dev wget
+            libsmbclient-dev libsqlite3-dev libssh-dev libuchardet-dev libxerces-c-dev libxi-dev libtree m4 makeself ninja-build
+            patch patchelf quilt uuid-dev wget
         run: |
           if [ "${{ matrix.distro }}" = "ubuntu" ]; then
             echo "deb [trusted=yes] http://ppa.launchpad.net/far2l-team/tools/ubuntu xenial main" | tee /etc/apt/sources.list.d/far2l-team.list
@@ -38,6 +38,12 @@ jobs:
           repository: ${{ github.event.client_payload.repo }}
           path: far2m
 
+      - name: Checkout luafar2m
+        uses: actions/checkout@v3
+        with:
+          repository: 'shmuz/luafar2m'
+          path: luafar2m
+
       - name: Setup ccache
         uses: actions/cache@v3
         with:
@@ -47,7 +53,6 @@ jobs:
             ccache-${{ matrix.distro }}-${{ matrix.version }}-
 
       - name: Build far2m
-        working-directory: far2m
         env:
           DATE: ${{ github.event.client_payload.date }}
           SHA: ${{ github.event.client_payload.sha }}
@@ -58,7 +63,7 @@ jobs:
           export CXX=g++-8
           export VERSION=${TAG}.git$(date -d $DATE +%Y%m%d)
           export PKG_NAME=far2m_${VERSION}-$(uname -m)
-          bash -x ../build_far2m.sh
+          bash -x build_far2m.sh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3

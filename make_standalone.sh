@@ -35,6 +35,7 @@ done
 
 if [[ $LIBC == "glibc" ]]; then
   dpkg -L libc6 | grep 'libnss' | xargs -I{} cp -va {} $LIB_DIR
+  dpkg -L libluajit-5.1-dev | grep 'libluajit.*\.so' | xargs -I{} cp -vL {} $LIB_DIR
 fi
 
 for file in $LIB_DIR/*; do
