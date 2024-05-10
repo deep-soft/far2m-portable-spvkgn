@@ -6,14 +6,14 @@ export LUA_PATH="$LUA_PATH;$HERE/lua/5.1/?.lua;$HERE/lua/5.1/?/init.lua;"
 export LUA_CPATH="$LUA_CPATH;$HERE/lib/?.so;"
 
 case "$1" in
-  -macros|--macros)
-    ACTION="macros"; shift
+  -nomacros|--nomacros)
+    ACTION="nomacros"; shift
     ;;
 esac
 
-if [[ "$ACTION" == "macros" ]]; then
+if [[ "$ACTION" != "nomacros" ]]; then
   LM_CFG=luamacro.example.ini
-  LM_CFG_PATH=$(find . -type f -name $LM_CFG)
+  LM_CFG_PATH=$(find ./Plugins -type f -name $LM_CFG)
   sed 's|^MainPath =.*|MainPath = $(FARHOME)/Macros|' "$LM_CFG_PATH" > "$(dirname "$LM_CFG_PATH")/${LM_CFG/.example}"
 fi
 
