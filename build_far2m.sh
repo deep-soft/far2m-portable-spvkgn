@@ -5,7 +5,7 @@ export CCACHE_DIR=$REPO_DIR/.ccache
 export DESTDIR=$REPO_DIR/AppDir
 BUILD_DIR=build
 
-if [[ "$STANDALONE" == "true" ]]; then
+if [[ "$WXGUI" == "false" ]]; then
   CMAKE_OPTS+=( "-DUSEWX=no" )
 fi
 
@@ -29,17 +29,25 @@ cmake -H$REPO_DIR/luafar2m -B$REPO_DIR/luafar2m/$BUILD_DIR \
   -DCMAKE_VERBOSE_MAKEFILE=ON && \
 cmake --build $REPO_DIR/luafar2m/$BUILD_DIR --target install -- -j$(nproc) && \
 
-if [[ "$STANDALONE" == "true" ]]; then
-  mkdir -p $REPO_DIR/standalone && cp -a $REPO_DIR/far2m/$BUILD_DIR/install/* $REPO_DIR/standalone && \
-  install -vm755 $REPO_DIR/AppRun $REPO_DIR/standalone && \
-  cp -na -t $REPO_DIR/standalone/Plugins/luafar \
-    $REPO_DIR/AppDir/usr/lib/far2m/Plugins/luafar/* \
-    $REPO_DIR/AppDir/usr/share/far2m/Plugins/luafar/* && \
-  cp -a $REPO_DIR/luafar2m/Macros $REPO_DIR/standalone && \
-  ( cd $REPO_DIR/standalone && ./far2m --help >/dev/null && bash -x $REPO_DIR/make_standalone.sh ) && \
-  makeself --keep-umask --nomd5 --nocrc $REPO_DIR/standalone $PKG_NAME.run "FAR2M File Manager" ./AppRun && \
-  tar cvf ${PKG_NAME/_${VERSION}}.run.tar $PKG_NAME.run
-fi && \
+mkdir -p $REPO_DIR/standalone/lib && cp -a $REPO_DIR/far2m/$BUILD_DIR/install/* $REPO_DIR/standalone && \
+install -vm755 $REPO_DIR/AppRun $REPO_DIR/standalone && \
+# Lua 5.1 libs
+dpkg -L libluajit-5.1-dev | grep 'libluajit-5.1.so' | xargs -I{} cp -vL {} $REPO_DIR/standalone/lib && \
+dpkg -L liblua5.1-0-dev | grep 'liblua5.1.so' | xargs -I{} cp -vL {} $REPO_DIR/standalone/lib && \
+# MoonScript
+luarocks install moonscript --lua-version=5.1 CC=$CC LD=$CC && \
+install -vm644 /usr/local/lib/lua/5.1/*.so $REPO_DIR/standalone/lib && \
+cp -a /usr/local/share/lua $REPO_DIR/standalone && \
+# LuaFar
+cp -na -t $REPO_DIR/standalone/Plugins/luafar \
+  $REPO_DIR/AppDir/usr/lib/far2m/Plugins/luafar/* \
+  $REPO_DIR/AppDir/usr/share/far2m/Plugins/luafar/* && \
+cp -a $REPO_DIR/luafar2m/Macros $REPO_DIR/standalone && \
+# standalone
+( cd $REPO_DIR/standalone && ./far2m --help >/dev/null && bash -x $REPO_DIR/make_standalone.sh ) && \
+# bundle
+makeself --keep-umask --nomd5 --nocrc $REPO_DIR/standalone $PKG_NAME.run "FAR2M File Manager" ./AppRun && \
+tar cvf ${PKG_NAME/_${VERSION}}.run.tar $PKG_NAME.run && \
 
 tar cJvf $REPO_DIR/far2m.tar.xz -C $REPO_DIR/AppDir .
 

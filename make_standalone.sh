@@ -11,13 +11,13 @@ case $DISTRO in
 esac
 
 if [[ $LIBC == "musl" ]]; then
-  LD_FILE=$(basename $(readlink -f /$(apk info -qL musl | grep ld-)))
+  LD_FILE=$(readlink -f /$(apk info -qL musl | grep ld-) | xargs basename)
 elif [[ $LIBC == "glibc" ]]; then
-  LD_FILE=$(basename $(dpkg -L libc6 | grep $(dpkg-architecture -qDEB_BUILD_MULTIARCH)/ld-))
+  LD_FILE=$(dpkg -L libc6 | grep $(dpkg-architecture -qDEB_BUILD_MULTIARCH)/ld- | xargs basename)
   # LD_FILE=$(basename $(ldconfig -p | awk -v var="$(dpkg-architecture -qDEB_BUILD_MULTIARCH)/ld-" '$4 ~ var {print $4}'))
 fi
 
-rm -rf $LIB_DIR; mkdir $LIB_DIR
+mkdir -p $LIB_DIR
 readarray -t files < <(find . -type f -exec sh -c 'file -b {} | grep -q ELF' \; -printf '%P\n')
 for file in "${files[@]}"; do
   c=$(awk -F/ '{print NF-1}' <<< $file)
@@ -35,7 +35,6 @@ done
 
 if [[ $LIBC == "glibc" ]]; then
   dpkg -L libc6 | grep 'libnss' | xargs -I{} cp -va {} $LIB_DIR
-  dpkg -L libluajit-5.1-dev | grep 'libluajit.*\.so' | xargs -I{} cp -vL {} $LIB_DIR
 fi
 
 for file in $LIB_DIR/*; do

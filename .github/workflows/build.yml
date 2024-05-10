@@ -20,7 +20,7 @@ jobs:
         env:
           PACKAGES: >
             ca-certificates ccache cmake file g++-8 gawk git libarchive-dev libluajit-5.1-dev libneon27-dev libnfs-dev libpcre3-dev
-            libsmbclient-dev libsqlite3-dev libssh-dev libuchardet-dev libxerces-c-dev libxi-dev libtree m4 makeself ninja-build
+            libsmbclient-dev libsqlite3-dev libssh-dev libuchardet-dev libxerces-c-dev libxi-dev libtree luarocks m4 makeself ninja-build
             patch patchelf quilt uuid-dev wget
         run: |
           if [ "${{ matrix.distro }}" = "ubuntu" ]; then
@@ -57,7 +57,7 @@ jobs:
           DATE: ${{ github.event.client_payload.date }}
           SHA: ${{ github.event.client_payload.sha }}
           TAG: ${{ github.event.client_payload.tag }}
-          STANDALONE: true
+          WXGUI: false
         run: |
           export CC=gcc-8
           export CXX=g++-8

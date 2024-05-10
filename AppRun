@@ -2,6 +2,9 @@
 
 HERE="$(dirname "$(readlink -f "$0")")"
 
+export LUA_PATH="$LUA_PATH;$HERE/lua/5.1/?.lua;$HERE/lua/5.1/?/init.lua;"
+export LUA_CPATH="$LUA_CPATH;$HERE/lib/?.so;"
+
 case "$1" in
   -macros|--macros)
     ACTION="macros"; shift
