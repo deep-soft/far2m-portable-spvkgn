@@ -12,18 +12,17 @@ fi
 ( cd $REPO_DIR/far2m && QUILT_PATCHES=$REPO_DIR/patches quilt push -a )
 
 mkdir -p $REPO_DIR/far2m/$BUILD_DIR && \
-cmake -G Ninja -H$REPO_DIR/far2m -B$REPO_DIR/far2m/$BUILD_DIR \
+cmake -S $REPO_DIR/far2m -B$REPO_DIR/far2m/$BUILD_DIR \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr \
-  -DCMAKE_VERBOSE_MAKEFILE=ON \
   -DCMAKE_C_COMPILER_LAUNCHER=/usr/bin/ccache \
   -DCMAKE_CXX_COMPILER_LAUNCHER=/usr/bin/ccache \
   ${CMAKE_OPTS[@]} && \
-  ninja -C $REPO_DIR/far2m/$BUILD_DIR install/strip && \
+  cmake --build $REPO_DIR/far2m/$BUILD_DIR --target install -- -j$(nproc) && \
 
 # build LuaFar
 mkdir -p $REPO_DIR/luafar2m/$BUILD_DIR && \
-cmake -H$REPO_DIR/luafar2m -B$REPO_DIR/luafar2m/$BUILD_DIR \
+cmake -S $REPO_DIR/luafar2m -B$REPO_DIR/luafar2m/$BUILD_DIR \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr \
   -DCMAKE_VERBOSE_MAKEFILE=ON && \
