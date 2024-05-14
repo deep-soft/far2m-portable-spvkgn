@@ -19,7 +19,7 @@ jobs:
       - name: Add build dependencies
         env:
           PACKAGES: >
-            ca-certificates ccache cmake file g++-8 gawk git libarchive-dev libluajit-5.1-dev libneon27-dev libnfs-dev libpcre3-dev
+            ca-certificates ccache cmake file g++-8 gawk git libarchive-dev libluajit-5.1-dev libneon27-dev libnfs-dev libonig-dev libpcre3-dev
             libsmbclient-dev libsqlite3-dev libssh-dev libuchardet-dev libxerces-c-dev libxi-dev libtree luarocks m4 makeself
             patch patchelf quilt uuid-dev wget
         run: |

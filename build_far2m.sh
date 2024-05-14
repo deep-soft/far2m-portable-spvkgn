@@ -23,18 +23,19 @@ cmake -S $REPO_DIR/far2m -B$REPO_DIR/far2m/$BUILD_DIR \
 # build LuaFar
 mkdir -p $REPO_DIR/luafar2m/$BUILD_DIR && \
 cmake -S $REPO_DIR/luafar2m -B$REPO_DIR/luafar2m/$BUILD_DIR \
+  -DHIGHLIGHT=yes \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_INSTALL_PREFIX=/usr \
-  -DCMAKE_VERBOSE_MAKEFILE=ON && \
+  -DCMAKE_INSTALL_PREFIX=/usr && \
 cmake --build $REPO_DIR/luafar2m/$BUILD_DIR --target install -- -j$(nproc) && \
 
 mkdir -p $REPO_DIR/standalone/lib && cp -a $REPO_DIR/far2m/$BUILD_DIR/install/* $REPO_DIR/standalone && \
 install -vm755 $REPO_DIR/AppRun $REPO_DIR/standalone && \
-# Lua 5.1 libs
-dpkg -L libluajit-5.1-dev | grep 'libluajit-5.1.so' | xargs -I{} cp -vL {} $REPO_DIR/standalone/lib && \
-dpkg -L liblua5.1-0-dev | grep 'liblua5.1.so' | xargs -I{} cp -vL {} $REPO_DIR/standalone/lib && \
-# MoonScript
+# copy libs
+dpkg-query -L liblua5.1-0-dev libluajit-5.1-dev libonig-dev | grep -e 'liblua5.1.so' -e 'libluajit-5.1.so' -e 'libonig.so' |\
+  xargs -I{} cp -vL {} $REPO_DIR/standalone/lib && \
+# Lua Modules
 luarocks install moonscript --lua-version=5.1 CC=$CC LD=$CC && \
+luarocks install lrexlib-oniguruma --lua-version=5.1 CC=$CC LD=$CC && \
 install -vm644 /usr/local/lib/lua/5.1/*.so $REPO_DIR/standalone/lib && \
 cp -a /usr/local/share/lua $REPO_DIR/standalone && \
 # LuaFar
