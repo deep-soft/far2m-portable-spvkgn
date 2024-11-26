@@ -9,7 +9,7 @@ if [[ "$WXGUI" == "false" ]]; then
   CMAKE_OPTS+=( "-DUSEWX=no" )
 fi
 
-( cd $REPO_DIR/far2m && QUILT_PATCHES=$REPO_DIR/patches quilt push -a )
+( [ -d $REPO_DIR/patches ] && cd $REPO_DIR/far2m && QUILT_PATCHES=$REPO_DIR/patches quilt push -a )
 
 mkdir -p $REPO_DIR/far2m/$BUILD_DIR && \
 cmake -S $REPO_DIR/far2m -B$REPO_DIR/far2m/$BUILD_DIR \
@@ -34,8 +34,8 @@ install -vm755 $REPO_DIR/AppRun $REPO_DIR/standalone && \
 dpkg-query -L liblua5.1-0-dev libluajit-5.1-dev libonig-dev | grep -e 'liblua5.1.so' -e 'libluajit-5.1.so' -e 'libonig.so' |\
   xargs -I{} cp -vL {} $REPO_DIR/standalone/lib && \
 # Lua Modules
-luarocks install moonscript --lua-version=5.1 CC=$CC LD=$CC && \
-luarocks install lrexlib-oniguruma --lua-version=5.1 CC=$CC LD=$CC && \
+luarocks install moonscript --lua-version=5.1 && \
+luarocks install lrexlib-oniguruma --lua-version=5.1 && \
 install -vm644 /usr/local/lib/lua/5.1/*.so $REPO_DIR/standalone/lib && \
 cp -a /usr/local/share/lua $REPO_DIR/standalone && \
 # LuaFar
