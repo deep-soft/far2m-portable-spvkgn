@@ -22,7 +22,7 @@ jobs:
           PACKAGES: >
             ca-certificates ccache cmake file g++ gawk git libarchive-dev libluajit-5.1-dev libneon27-dev libnfs-dev libonig-dev libpcre3-dev
             libsmbclient-dev libsqlite3-dev libssh-dev libuchardet-dev libxml2-dev libxi-dev libtree luarocks m4 make makeself
-            patch patchelf quilt uuid-dev wget
+            patch patchelf quilt uuid-dev wget xz-utils
         run: |
           if [ "${{ matrix.distro }}" = "ubuntu" ]; then
             echo "deb [trusted=yes] http://ppa.launchpad.net/far2l-team/tools/ubuntu bionic main" | tee /etc/apt/sources.list.d/far2l-team.list
@@ -50,8 +50,7 @@ jobs:
         with:
           path: ${{ github.workspace }}/.ccache
           key: ccache-${{ matrix.distro }}-${{ matrix.version }}-${{ github.event.client_payload.sha }}
-          restore-keys: |
-            ccache-${{ matrix.distro }}-${{ matrix.version }}-
+          restore-keys: ccache-${{ matrix.distro }}-${{ matrix.version }}-
 
       - name: Build far2m
         env:
@@ -68,40 +67,17 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: far2m-${{ matrix.distro }}-${{ matrix.version }}
-          path: |
-            ./**/far2m*.tar*
+          path: ./**/far2m*.tar*
           if-no-files-found: error
 
-  release:
-    needs: build-portable
-    permissions:
-      contents: write
-    env:
-      tag_name: latest
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Delete existing release
+      - name: Release
+        uses: andelf/nightly-release@main
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete ${{ env.tag_name }} --cleanup-tag -y -R ${{ github.repository }} || true
-
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v2
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          fail_on_unmatched_files: true
           prerelease: false
-          draft: false
-          tag_name: ${{ env.tag_name }}
+          tag_name: latest
           name: ${{ github.event.client_payload.date }}
           body: |
-            ${{ github.event.client_payload.url }}: ${{ github.event.client_payload.message }}
-          files: |
-            ./**/far2m*.run.tar
-
-      - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@v2
-        continue-on-error: true
+            ${{ format('{0}: {1}', github.event.client_payload.url, github.event.client_payload.message) }}
+          files: ./**/far2m*.run.tar
