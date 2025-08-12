@@ -33,8 +33,10 @@ mkdir -p $REPO_DIR/standalone/lib
 cp -a $REPO_DIR/far2m/$BUILD_DIR/install/* $REPO_DIR/standalone
 install -vm755 $REPO_DIR/AppRun $REPO_DIR/standalone
 # copy libs
-dpkg-query -L liblua5.1-0-dev libluajit-5.1-dev libonig-dev | grep -e 'liblua5.1.so' -e 'libluajit-5.1.so' -e 'libonig.so' |\
+dpkg-query -L 7zip liblua5.1-0-dev libluajit-5.1-dev libonig-dev |\
+  grep -e '7z.so' -e 'liblua5.1.so' -e 'libluajit-5.1.so' -e 'libonig.so' |\
   xargs -I{} cp -vL {} $REPO_DIR/standalone/lib
+ln -s ../../../lib/7z.so $REPO_DIR/standalone/Plugins/arclite/plug/7z.so
 # Lua Modules
 luarocks install moonscript --lua-version=5.1
 luarocks install lrexlib-oniguruma --lua-version=5.1

@@ -20,7 +20,7 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
           PACKAGES: >
-            ca-certificates ccache cmake file g++ gawk git libarchive-dev libluajit-5.1-dev libneon27-dev libnfs-dev libonig-dev libpcre3-dev
+            7zip ca-certificates ccache cmake file g++ gawk git libarchive-dev libluajit-5.1-dev libneon27-dev libnfs-dev libonig-dev libpcre3-dev
             libsmbclient-dev libsqlite3-dev libssh-dev libuchardet-dev libxml2-dev libxi-dev libtree luarocks m4 make makeself
             patch patchelf quilt uuid-dev wget xz-utils
         run: |
@@ -61,7 +61,7 @@ jobs:
         run: |
           export VERSION=${TAG}.git$(date -d $DATE +%Y%m%d)
           export PKG_NAME=far2m_${VERSION}-$(uname -m)
-          bash -x build_far2m.sh
+          bash build_far2m.sh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
