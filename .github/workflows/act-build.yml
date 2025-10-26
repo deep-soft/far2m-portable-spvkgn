@@ -1,0 +1,85 @@
+# act-build.yml
+name: build
+run-name: 🌙 Nightly build 🚀 ${{ github.event.client_payload.tag }}-${{ github.event.client_payload.date }}-${{ github.event.client_payload.sha }}
+
+on:
+#  repository_dispatch:
+#    types: [ build-nightly ]
+  workflow_dispatch:
+
+jobs:
+  build-portable:
+    name: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - distro: ubuntu
+            version: '20.04'
+    container: ${{ matrix.distro }}:${{ matrix.version }}
+    steps:
+      - name: Add build dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          PACKAGES: >
+            7zip ca-certificates ccache cmake file g++ gawk git libarchive-dev libluajit-5.1-dev libneon27-dev libnfs-dev libonig-dev libpcre3-dev
+            libsmbclient-dev libsqlite3-dev libssh-dev libuchardet-dev libxml2-dev libxi-dev libtree luarocks m4 make makeself
+            patch patchelf quilt uuid-dev wget xz-utils
+        run: |
+          if [ "${{ matrix.distro }}" = "ubuntu" ]; then
+            echo "deb [trusted=yes] http://ppa.launchpad.net/far2l-team/tools/ubuntu bionic main" | tee /etc/apt/sources.list.d/far2l-team.list
+            echo "deb [trusted=yes] http://ppa.launchpad.net/git-core/ppa/ubuntu bionic main" | tee /etc/apt/sources.list.d/git-core.list
+            apt update -qq && apt install -y --no-install-recommends ${{ env.PACKAGES }}
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout far2m
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.client_payload.repo }}
+          path: far2m
+
+      - name: Checkout luafar2m
+        uses: actions/checkout@v4
+        with:
+          repository: 'shmuz/luafar2m'
+          path: luafar2m
+
+      - name: Setup ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ccache-${{ matrix.distro }}-${{ matrix.version }}-${{ github.event.client_payload.sha }}
+          restore-keys: ccache-${{ matrix.distro }}-${{ matrix.version }}-
+
+      - name: Build far2m
+        env:
+          DATE: ${{ github.event.client_payload.date }}
+          SHA: ${{ github.event.client_payload.sha }}
+          TAG: ${{ github.event.client_payload.tag }}
+          WXGUI: false
+        run: |
+          export VERSION=${TAG}.git$(date -d $DATE +%Y%m%d)
+          export PKG_NAME=far2m_${VERSION}-$(uname -m)
+          bash build_far2m.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: far2m-${{ matrix.distro }}-${{ matrix.version }}
+          path: ./**/far2m*.tar*
+          if-no-files-found: error
+
+      - name: Release
+        uses: andelf/nightly-release@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          prerelease: false
+          tag_name: latest
+          name: ${{ github.event.client_payload.date }}
+          body: |
+            ${{ format('{0}: {1}', github.event.client_payload.url, github.event.client_payload.message) }}
+          files: ./**/far2m*.run.tar
