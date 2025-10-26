@@ -1,5 +1,5 @@
 # act-build.yml
-name: build
+name: act-build
 run-name: 🌙 Nightly build 🚀 ${{ github.event.client_payload.tag }}-${{ github.event.client_payload.date }}-${{ github.event.client_payload.sha }}
 
 on:
